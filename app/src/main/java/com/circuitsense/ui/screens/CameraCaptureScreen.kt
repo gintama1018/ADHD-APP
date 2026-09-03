@@ -11,6 +11,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,28 +23,31 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
 import androidx.core.content.ContextCompat
-import com.circuitsense.data.SampleCircuitItem
 import com.circuitsense.data.SampleCircuits
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.recognition.CircuitRecognizer
@@ -52,8 +58,9 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 /**
- * CameraX Capture Screen with Curated Textbook Presets.
- * Allows capturing photo of a real circuit diagram OR choosing a curated textbook sample.
+ * Screen 1 — Capture / Home Screen (Senior Product Standard).
+ * Built with proper system insets (statusBarsPadding, navigationBarsPadding),
+ * rich hero showcase, vibrant curated preset cards, and on-device ML Kit camera scanner.
  */
 @Composable
 fun CameraCaptureScreen(
@@ -66,19 +73,19 @@ fun CameraCaptureScreen(
 
     var hasCameraPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
         )
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasCameraPermission = granted
-    }
-
-    LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+        if (!isGranted) {
+            Toast.makeText(context, "Camera permission optional — presets available below!", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -88,9 +95,11 @@ fun CameraCaptureScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F111A))
+            .background(BackgroundDark)
     ) {
+        // Center Area: Live Camera Preview OR Animated Showcase Hero Card
         if (hasCameraPermission) {
+            // Live Camera Viewfinder
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -122,148 +131,266 @@ fun CameraCaptureScreen(
                     previewView
                 }
             )
+
+            // Animated Laser Reticle on active camera
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(width = 300.dp, height = 240.dp)
+                    .border(2.5.dp, ElectricBlue.copy(alpha = 0.8f), RoundedCornerShape(24.dp))
+                    .padding(14.dp)
+            ) {
+                Text(
+                    text = "Align Ohm's Law Circuit (V = IR)",
+                    color = TextPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         } else {
-            // Permission placeholder
+            // High-End Interactive Circuit Showcase Hero (Solves empty black screen)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 110.dp, bottom = 260.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "Camera Permission Required",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Allow camera access to capture circuit diagrams, or pick a curated sample diagram below.",
-                    color = Color(0xFF90A4AE),
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF))
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = CardDark,
+                    border = BorderStroke(1.5.dp, CardElevated),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant Permission", color = Color(0xFF0F111A), fontWeight = FontWeight.Bold)
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Animated Sparky Mini Circuit Canvas
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp)
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val w = size.width
+                                val h = size.height
+                                val loopPath = Path().apply {
+                                    moveTo(w * 0.2f, h * 0.5f)
+                                    quadraticBezierTo(w * 0.2f, h * 0.15f, w * 0.5f, h * 0.15f)
+                                    quadraticBezierTo(w * 0.8f, h * 0.15f, w * 0.8f, h * 0.5f)
+                                    quadraticBezierTo(w * 0.8f, h * 0.85f, w * 0.5f, h * 0.85f)
+                                    quadraticBezierTo(w * 0.2f, h * 0.85f, w * 0.2f, h * 0.5f)
+                                }
+                                drawPath(
+                                    path = loopPath,
+                                    color = Color(0x332EC5FF),
+                                    style = Stroke(width = 10f, cap = StrokeCap.Round)
+                                )
+                                drawPath(
+                                    path = loopPath,
+                                    color = Color(0xFF475569),
+                                    style = Stroke(width = 4f, cap = StrokeCap.Round)
+                                )
+
+                                // Sparky Mascot
+                                CharacterSprite.draw(
+                                    drawScope = this,
+                                    position = Offset(w * 0.5f, h * 0.15f),
+                                    motionProgress = 0.5f,
+                                    expression = SparkyExpression.EXCITED,
+                                    speedFactor = 1.0f
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Transform Schematics into Motion",
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Point camera at any drawn circuit or launch one of our verified textbook presets below.",
+                            color = TextMuted,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ElectricBlue,
+                                contentColor = BackgroundDark
+                            )
+                        ) {
+                            Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Enable Camera Scanner", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
         }
 
-        // Circuit Alignment Target Frame (Round, not sharp per DESIGN.md)
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(width = 300.dp, height = 220.dp)
-                .border(2.5.dp, ElectricBlue.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                .padding(14.dp)
-        ) {
-            Text(
-                text = "Align Ohm's Law Circuit Here",
-                color = Color(0xCCFFFFFF),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
-
-        // Header Bar
+        // Top Header Bar with Safe Status Bar Insets (Solves notch/clock overlapping)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 40.dp, start = 20.dp, end = 20.dp)
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
                 .align(Alignment.TopCenter),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "CircuitSense",
-                    color = Color(0xFF00E5FF),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "AI Motion-Graphics Physics Tutor",
-                    color = Color(0xFFB0BEC5),
-                    fontSize = 12.sp
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0x332EC5FF),
+                    border = BorderStroke(1.dp, ElectricBlue),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("⚡", fontSize = 18.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "CircuitSense",
+                        color = ElectricBlue,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = "AI Motion-Graphics Physics Tutor",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xAA141824)
+                shape = RoundedCornerShape(14.dp),
+                color = CardDark,
+                border = BorderStroke(1.dp, WarmAmber.copy(alpha = 0.6f))
             ) {
                 Text(
-                    text = "Ohm's Law MVP",
-                    color = Color(0xFFFFAB00),
+                    text = "V = IR MVP",
+                    color = WarmAmber,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
         }
 
-        // Bottom Controls Container
+        // Bottom Controls Container with Safe Navigation Bar Insets
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .background(Color(0xE60F111A))
-                .padding(horizontal = 16.dp, vertical = 20.dp),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, BackgroundDark.copy(alpha = 0.95f), BackgroundDark)
+                    )
+                )
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Curated Textbook Presets Bar (Guarantees flawless live recording)
+            // Curated Presets Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Default.Collections,
-                    contentDescription = null,
-                    tint = Color(0xFF00E5FF),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Collections,
+                        contentDescription = null,
+                        tint = ElectricBlue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Curated Textbook Presets",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
-                    text = "Curated Textbook Presets:",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    text = "Instant 60 FPS",
+                    color = SuccessGreen,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // Rich Glassmorphic Preset Cards (4 Presets)
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(SampleCircuits.items) { sample ->
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(18.dp),
                         color = CardDark,
                         border = BorderStroke(1.dp, CardElevated),
                         modifier = Modifier.clickable {
                             onCircuitReady(sample.graph, false, null)
                         }
                     ) {
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .width(155.dp)
+                                .padding(12.dp)
+                        ) {
                             Text(
                                 text = sample.title,
-                                color = Color(0xFF00E5FF),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                color = ElectricBlue,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
-                            Text(
-                                text = "I = ${sample.graph.formula.I}A",
-                                color = Color(0xFFB0BEC5),
-                                fontSize = 11.sp
-                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "${sample.graph.formula.V.toInt()}V ÷ ${sample.graph.formula.R.toInt()}Ω",
+                                    color = TextMuted,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = BackgroundDark
+                            ) {
+                                Text(
+                                    text = "I = ${sample.graph.formula.I} A",
+                                    color = SuccessGreen,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -271,31 +398,12 @@ fun CameraCaptureScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Capture Shutter Button Row with idle Sparky presence (DESIGN.md)
+            // Shutter Button Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Idle Sparky friendly companion
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .padding(end = 6.dp)
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        CharacterSprite.draw(
-                            drawScope = this,
-                            position = Offset(size.width / 2f, size.height / 2f),
-                            motionProgress = 0f,
-                            expression = SparkyExpression.EXCITED,
-                            speedFactor = 1.0f
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
                 IconButton(
                     onClick = {
                         val capture = imageCapture
@@ -323,35 +431,37 @@ fun CameraCaptureScreen(
                                     }
                                 }
                             )
-                        } else if (!hasCameraPermission) {
-                            // If camera not permitted, use default sample with explicit fallback banner
-                            onCircuitReady(
-                                SampleCircuits.defaultSample.graph,
-                                true,
-                                "Camera permission required for live scan — showing reference circuit (9V, 100Ω)"
-                            )
+                        } else {
+                            // If camera not ready, launch permission or fallback to default sample
+                            if (!hasCameraPermission) {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                            } else {
+                                onCircuitReady(
+                                    SampleCircuits.defaultSample.graph,
+                                    true,
+                                    "Showing reference 9V, 100Ω circuit"
+                                )
+                            }
                         }
                     },
                     modifier = Modifier
-                        .size(68.dp)
+                        .size(64.dp)
                         .background(ElectricBlue, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Capture",
+                        contentDescription = "Scan Circuit",
                         tint = BackgroundDark,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.width(48.dp)) // balance row
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Tap to Scan Diagram with On-Device ML Kit",
+                text = "Tap to Scan Diagram with ML Kit OCR",
                 color = TextMuted,
-                fontSize = 12.sp
+                fontSize = 11.sp
             )
         }
 
@@ -360,21 +470,21 @@ fun CameraCaptureScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xCC0F111A)),
+                    .background(Color(0xCC0D1321)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFF00E5FF))
+                    CircularProgressIndicator(color = ElectricBlue)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Analyzing Circuit Diagram...",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Detecting Battery, Resistor & Building Circuit JSON",
-                        color = Color(0xFF90A4AE),
+                        text = "Parsing components & calculating Ohm's Law JSON",
+                        color = TextMuted,
                         fontSize = 12.sp
                     )
                 }

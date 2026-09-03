@@ -62,13 +62,15 @@ fun CircuitMotionCanvas(
                 val battery = graph.getBattery() ?: graph.components.firstOrNull()
                 val resistor = graph.getResistor() ?: graph.components.getOrNull(1)
 
-                val bX = (battery?.x ?: 120f) * scaleRatioX
-                val bY = (battery?.y ?: 240f) * scaleRatioY
-                val rX = (resistor?.x ?: 460f) * scaleRatioX
-                val rY = (resistor?.y ?: 240f) * scaleRatioY
+                val centerY = canvasH * 0.46f
+                val loopHalfHeight = (canvasH * 0.18f).coerceIn(130f, 260f)
+                val topWireY = centerY - loopHalfHeight
+                val bottomWireY = centerY + loopHalfHeight
 
-                val topWireY = bY - 80f
-                val bottomWireY = bY + 80f
+                val bX = canvasW * 0.20f
+                val bY = centerY
+                val rX = canvasW * 0.80f
+                val rY = centerY
 
                 // 3. Draw Connecting Copper Wires (Loop)
                 drawCircuitWires(

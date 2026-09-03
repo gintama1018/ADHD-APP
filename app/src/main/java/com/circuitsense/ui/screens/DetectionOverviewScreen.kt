@@ -67,10 +67,12 @@ fun DetectionOverviewScreen(
 
     Scaffold(
         containerColor = BackgroundDark,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -122,6 +124,7 @@ fun DetectionOverviewScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(BackgroundDark)
+                    .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

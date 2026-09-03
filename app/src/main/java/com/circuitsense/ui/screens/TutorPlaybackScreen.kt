@@ -130,6 +130,7 @@ fun TutorPlaybackScreen(
 
     Scaffold(
         containerColor = Color(0xFF0F111A),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TutorTopBar(
                 currentPhase = currentPhase,
@@ -284,13 +285,14 @@ private fun TutorTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(
             onClick = onRescanClick,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(44.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -332,12 +334,12 @@ private fun TutorTopBar(
                     containerColor = Color(0xFF1C2230),
                     contentColor = Color(0xFF00E5FF)
                 ),
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.DataObject,
                     contentDescription = "Inspect JSON",
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -349,12 +351,12 @@ private fun TutorTopBar(
                     containerColor = Color(0xFF261D10),
                     contentColor = Color(0xFFFFAB00)
                 ),
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = "Ask a Doubt",
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -428,6 +430,7 @@ private fun TutorBottomControls(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xF00D1017))
+            .navigationBarsPadding()
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         // ADHD Subtitles Banner (High contrast, focal anchoring)
