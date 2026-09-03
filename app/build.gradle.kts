@@ -74,8 +74,11 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // Google ML Kit Text Recognition for parsing circuit numbers (e.g. 9V, 100 ohm)
+    // Google ML Kit Text Recognition for parsing circuit numbers, math, and book questions
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+
+    // Google ML Kit Live Object Detection (People, Machinery, Books, Everyday Objects - Offline)
+    implementation("com.google.mlkit:object-detection:17.0.2")
 
     // Kotlinx Serialization JSON for Circuit JSON Graph
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")

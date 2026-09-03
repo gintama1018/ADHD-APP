@@ -111,6 +111,26 @@ object OfflinePhysicsBot {
                 • Sparky's drift speed in the animation would speed up significantly!
                 """.trimIndent()
             }
+            q.contains("0 ohm") || q.contains("0ohm") || q.contains("short circuit") || q.contains("drops to 0") -> {
+                """
+                💥 DANGER! Short Circuit Cross-Examination:
+                
+                • Formula: I = V / R. If R → 0, Current I → ∞ (Infinity)!
+                • In reality, current spikes to hundreds of Amperes, limited only by internal battery resistance.
+                • Extreme Joule Heating (P = I²R) instantly melts wires, triggers sparks, or explodes the battery!
+                • Sparky's Anime Reaction: 😱 Running for his life from extreme thermal overload!
+                """.trimIndent()
+            }
+            q.contains("r doubles") || q.contains("double r") || (q.contains("cross") && q.contains("double")) -> {
+                """
+                🎯 Cross-Examination Answer:
+                
+                • Ohm's Law: I = V / R. Current is inversely proportional to resistance (I ∝ 1/R).
+                • If R doubles from ${r.toInt()}Ω to ${(r * 2).toInt()}Ω while V stays at ${v.toInt()}V:
+                  New Current = ${v.toInt()} ÷ ${(r * 2).toInt()} = ${String.format("%.3f", i / 2)} Amperes!
+                • Result: Current is exactly HALVED! Sparky faces twice the atomic obstacles, slowing his pace!
+                """.trimIndent()
+            }
             q.contains("heat") || q.contains("power") || q.contains("watt") || q.contains("burn") -> {
                 """
                 ♨️ Heat & Power Dissipation:
@@ -195,7 +215,9 @@ fun AskDoubtBottomSheet(
         "Why does Sparky struggle in the resistor?",
         "What happens if I increase voltage to 24V?",
         "How much heat (Watts) does this produce?",
-        "Explain drift velocity vs light speed"
+        "Explain drift velocity vs light speed",
+        "🎯 Cross-Question: If R doubles, what happens to I?",
+        "🎯 Cross-Question: What if resistance drops to 0Ω?"
     )
 
     fun sendQuestion(question: String) {

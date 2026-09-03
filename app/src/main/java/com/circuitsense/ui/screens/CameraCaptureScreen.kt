@@ -55,6 +55,9 @@ import com.circuitsense.data.SampleCircuits
 import com.circuitsense.data.SavedCircuitItem
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.recognition.CircuitRecognizer
+import com.circuitsense.recognition.UniversalLiveVisionScanner
+import com.circuitsense.recognition.UniversalVisionBox
+import com.circuitsense.ui.components.LiveCameraBoundingBoxes
 import com.circuitsense.renderer.CharacterSprite
 import com.circuitsense.renderer.SparkyExpression
 import com.circuitsense.ui.theme.*
@@ -75,6 +78,7 @@ fun CameraCaptureScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     val recognizer = remember { CircuitRecognizer() }
+    val liveScanner = remember { UniversalLiveVisionScanner() }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -97,6 +101,9 @@ fun CameraCaptureScreen(
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
+    var liveBoxes by remember { mutableStateOf<List<UniversalVisionBox>>(emptyList()) }
+    var liveDetectedText by remember { mutableStateOf("") }
+    var isCircuitLocked by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -121,6 +128,20 @@ fun CameraCaptureScreen(
                             .build()
                         imageCapture = capture
 
+                        // Real-Time 30 FPS On-Device Computer Vision Analyzer (Offline ML Kit)
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+
+                        val analysisExecutor = Executors.newSingleThreadExecutor()
+                        imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
+                            liveScanner.processFrame(imageProxy) { boxes, rawText, hasCircuit ->
+                                liveBoxes = boxes
+                                liveDetectedText = rawText
+                                isCircuitLocked = hasCircuit
+                            }
+                        }
+
                         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                         try {
                             cameraProvider.unbindAll()
@@ -128,7 +149,8 @@ fun CameraCaptureScreen(
                                 lifecycleOwner,
                                 cameraSelector,
                                 preview,
-                                capture
+                                capture,
+                                imageAnalysis
                             )
                         } catch (e: Exception) {
                             e.printStackTrace()
@@ -136,6 +158,12 @@ fun CameraCaptureScreen(
                     }, ContextCompat.getMainExecutor(ctx))
                     previewView
                 }
+            )
+
+            // Live Dynamic Streaming Bounding Boxes Overlay (Matching Photos 1, 2, 3)
+            LiveCameraBoundingBoxes(
+                boxes = liveBoxes,
+                modifier = Modifier.fillMaxSize()
             )
 
             // Animated Laser Reticle on active camera
