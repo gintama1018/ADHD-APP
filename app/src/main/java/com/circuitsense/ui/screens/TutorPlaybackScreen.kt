@@ -27,7 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import com.circuitsense.audio.NarrationManager
+import com.circuitsense.data.CircuitHistoryManager
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.qa.AskDoubtBottomSheet
 import com.circuitsense.renderer.CameraDirector
@@ -136,7 +138,11 @@ fun TutorPlaybackScreen(
                 currentPhase = currentPhase,
                 onRescanClick = onRescanClick,
                 onInspectJsonClick = { showJsonSheet = true },
-                onAskDoubtClick = { showDoubtSheet = true }
+                onAskDoubtClick = { showDoubtSheet = true },
+                onSaveHistoryClick = {
+                    CircuitHistoryManager.saveCircuit(context, activeGraph)
+                    Toast.makeText(context, "Saved to Study History!", Toast.LENGTH_SHORT).show()
+                }
             )
         },
         bottomBar = {
@@ -280,7 +286,8 @@ private fun TutorTopBar(
     currentPhase: StoryPhase,
     onRescanClick: () -> Unit,
     onInspectJsonClick: () -> Unit,
-    onAskDoubtClick: () -> Unit
+    onAskDoubtClick: () -> Unit,
+    onSaveHistoryClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -326,8 +333,25 @@ private fun TutorTopBar(
             }
         }
 
-        // Action Buttons: JSON Inspector & Ask a Doubt
+        // Action Buttons: Save, JSON Inspector & Ask a Doubt
         Row(verticalAlignment = Alignment.CenterVertically) {
+            FilledTonalIconButton(
+                onClick = onSaveHistoryClick,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = Color(0xFF14241B),
+                    contentColor = Color(0xFF4ADE80)
+                ),
+                modifier = Modifier.size(42.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.BookmarkAdd,
+                    contentDescription = "Save to History",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
             FilledTonalIconButton(
                 onClick = onInspectJsonClick,
                 colors = IconButtonDefaults.filledTonalIconButtonColors(

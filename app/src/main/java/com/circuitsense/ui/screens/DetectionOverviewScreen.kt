@@ -1,5 +1,6 @@
 package com.circuitsense.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -11,9 +12,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,16 +29,20 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.circuitsense.data.CircuitHistoryManager
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.renderer.CharacterSprite
 import com.circuitsense.renderer.ComponentAnimationRegistry
 import com.circuitsense.renderer.SparkyExpression
+import com.circuitsense.ui.components.AiVisionDetectionOverlay
 import com.circuitsense.ui.components.JsonInspectorSheet
+import com.circuitsense.ui.components.drawPlaygroundDotGrid
 import com.circuitsense.ui.theme.*
 
 enum class OverviewTab(val title: String, val icon: String) {
@@ -45,10 +53,12 @@ enum class OverviewTab(val title: String, val icon: String) {
 }
 
 /**
- * Screen 2 — Detection / Overview Screen (per DESIGN.md).
- * Displays the newly recognized circuit in a friendly cartoon layout,
- * verification banner (green on detection, yellow on fallback), Ohm's law badge,
- * interactive tab highlights, and a primary CTA to launch the motion tutor.
+ * Screen 2 — Detection / Overview Screen (per DESIGN.md & User Reference Photos).
+ * Features:
+ * - Dot-matrix technical playground background (Photo 4)
+ * - AI Computer Vision detection bounding box HUD (Photos 1, 2, 3)
+ * - Save to Study History / Gallery button
+ * - Anime-style dialogue and Sparky expression reactions
  */
 @Composable
 fun DetectionOverviewScreen(
@@ -58,8 +68,11 @@ fun DetectionOverviewScreen(
     onStartTutor: () -> Unit,
     onRescanClick: () -> Unit
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(OverviewTab.OVERVIEW) }
     var showJsonSheet by remember { mutableStateOf(false) }
+    var showVisionBoxes by remember { mutableStateOf(true) }
+    var isSaved by remember { mutableStateOf(false) }
 
     val v = graph.formula.V.toInt()
     val r = graph.formula.R.toInt()
@@ -94,28 +107,54 @@ fun DetectionOverviewScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Circuit Overview",
+                            text = "AI Vision Detection",
                             color = TextMuted,
                             fontSize = 12.sp
                         )
                     }
                 }
 
-                // Inspect JSON quick button
-                OutlinedButton(
-                    onClick = { showJsonSheet = true },
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, ElectricBlue.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricBlue),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DataObject,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("JSON", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Save to Study History Button
+                    IconButton(
+                        onClick = {
+                            CircuitHistoryManager.saveCircuit(context, graph)
+                            isSaved = true
+                            Toast.makeText(context, "Saved to Study History!", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BookmarkAdd,
+                            contentDescription = "Save to History",
+                            tint = if (isSaved) SuccessGreen else TextMuted
+                        )
+                    }
+
+                    // Toggle AI CV Bounding Boxes (Photo 1/2/3 style)
+                    IconButton(onClick = { showVisionBoxes = !showVisionBoxes }) {
+                        Icon(
+                            imageVector = if (showVisionBoxes) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = "Toggle Bounding Boxes",
+                            tint = if (showVisionBoxes) ElectricBlue else TextMuted
+                        )
+                    }
+
+                    // Inspect JSON quick button
+                    OutlinedButton(
+                        onClick = { showJsonSheet = true },
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, ElectricBlue.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricBlue),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DataObject,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("JSON", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
@@ -125,7 +164,7 @@ fun DetectionOverviewScreen(
                     .fillMaxWidth()
                     .background(BackgroundDark)
                     .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Primary CTA button to launch animated tutor
@@ -147,7 +186,7 @@ fun DetectionOverviewScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Start Motion Tutor",
+                        text = "Start Motion Graphics Tutor",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -168,7 +207,7 @@ fun DetectionOverviewScreen(
                 border = BorderStroke(1.dp, if (isFallback) WarningYellow else SuccessGreen),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 6.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -183,7 +222,7 @@ fun DetectionOverviewScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = if (isFallback) "Reference Circuit Active" else "Circuit Detected Successfully",
+                            text = if (isFallback) "Reference Circuit Active" else "AI Vision: Circuit Recognized (3 of 3)",
                             color = if (isFallback) WarningYellow else SuccessGreen,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
@@ -192,7 +231,7 @@ fun DetectionOverviewScreen(
                             text = if (isFallback) {
                                 fallbackReason ?: "Couldn't read values clearly — showing reference circuit (${v}V, ${r}Ω)"
                             } else {
-                                "Recognized ${v}V battery & ${r}Ω resistor (Current I = ${i}A)"
+                                "Bounding boxes generated for Battery (${v}V), Resistor (${r}Ω) & Loop (I = ${i}A)"
                             },
                             color = TextPrimary,
                             fontSize = 12.sp,
@@ -209,19 +248,19 @@ fun DetectionOverviewScreen(
                 border = BorderStroke(1.dp, CardElevated),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 4.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     MetricPill(label = "VOLTAGE (V)", value = "${v}V", color = ElectricBlue)
-                    Text("÷", color = TextMuted, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("÷", color = TextMuted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     MetricPill(label = "RESISTANCE (R)", value = "${r}Ω", color = WarmAmber)
-                    Text("=", color = TextMuted, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("=", color = TextMuted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     MetricPill(label = "CURRENT (I)", value = "${i}A", color = SuccessGreen)
                 }
             }
@@ -230,7 +269,7 @@ fun DetectionOverviewScreen(
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(OverviewTab.values()) { tab ->
@@ -257,7 +296,7 @@ fun DetectionOverviewScreen(
                 }
             }
 
-            // 4. Cartoon Circuit Diagram Canvas (Round, friendly, not technical)
+            // 4. Dot-Matrix Technical Playground Canvas (Photo 4) with Vision Bounding Boxes (Photos 1/2/3)
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = CardDark,
@@ -274,26 +313,35 @@ fun DetectionOverviewScreen(
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    // Tab Explanatory Tooltip Bubble
-                    val tabTip = when (selectedTab) {
-                        OverviewTab.OVERVIEW -> "Closed single loop: Voltage pushes electrons through resistance."
-                        OverviewTab.BATTERY -> "⚡ Battery: Chemical separation creates potential difference (${v}V)."
-                        OverviewTab.WIRE -> "🔵 Conductor: Metallic copper wire offering free electron path."
-                        OverviewTab.RESISTOR -> "🔥 Resistor: Lattice friction opposes flow (${r}Ω), creating heat."
+                    // AI Vision Detection Overlay (Bounding boxes, confidence scores)
+                    if (showVisionBoxes) {
+                        AiVisionDetectionOverlay(
+                            graph = graph,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // Anime Story Callout Bubble from Sparky
+                    val animeQuote = when (selectedTab) {
+                        OverviewTab.OVERVIEW -> "⚡ Sparky: \"V = ${v}V is pushing me against ${r}Ω resistance! Let's animate this!\""
+                        OverviewTab.BATTERY -> "⚡ Sparky: \"WHOA! Chemical energy is pumping me up to ${v} Volts!\""
+                        OverviewTab.WIRE -> "✨ Sparky: \"Cruising smoothly through copper at ${i} Amps! Wheee!\""
+                        OverviewTab.RESISTOR -> "🔥 Sparky: \"OUCH! ${r} Ohms of vibrating lattice atoms! Getting squished!\""
                     }
 
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = Color(0xD90D1321),
-                        border = BorderStroke(1.dp, Color(0x332EC5FF)),
+                        color = Color(0xF20D1321),
+                        border = BorderStroke(1.dp, ElectricBlue.copy(alpha = 0.4f)),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = tabTip,
+                            text = animeQuote,
                             color = TextPrimary,
                             fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                         )
@@ -341,6 +389,9 @@ private fun CartoonDiagramCanvas(
         val w = size.width
         val h = size.height
 
+        // 1. Photo 4: Dot-Matrix Technical Playground Background
+        drawPlaygroundDotGrid(w, h, step = 28f, dotRadius = 1.6f, dotColor = Color(0xFF282B36))
+
         val bX = w * 0.25f
         val bY = h * 0.50f
         val rX = w * 0.75f
@@ -349,7 +400,7 @@ private fun CartoonDiagramCanvas(
         val topY = h * 0.28f
         val bottomY = h * 0.72f
 
-        // 1. Gently curved cartoon wire path
+        // 2. Gently curved cartoon wire path
         val wirePath = Path().apply {
             moveTo(bX, bY - 30f)
             quadraticBezierTo(bX, topY, (bX + rX) / 2f, topY)
@@ -372,7 +423,7 @@ private fun CartoonDiagramCanvas(
             style = Stroke(width = 5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
-        // 2. Render Battery & Resistor using generic registry
+        // 3. Render Battery & Resistor using generic registry
         graph.components.forEach { comp ->
             val isBattery = comp.type.equals("battery", ignoreCase = true)
             val isResistor = comp.type.equals("resistor", ignoreCase = true)
@@ -397,7 +448,7 @@ private fun CartoonDiagramCanvas(
             )
         }
 
-        // 3. Static friendly Sparky waiting at the battery
+        // 4. Sparky with Anime Expression
         val sparkyPos = when (selectedTab) {
             OverviewTab.BATTERY -> Offset(bX, topY)
             OverviewTab.WIRE -> Offset((bX + rX) / 2f, topY)
@@ -405,11 +456,17 @@ private fun CartoonDiagramCanvas(
             OverviewTab.OVERVIEW -> Offset(bX, topY)
         }
 
+        val expr = when (selectedTab) {
+            OverviewTab.BATTERY -> SparkyExpression.EXCITED
+            OverviewTab.RESISTOR -> SparkyExpression.SQUISHED
+            else -> SparkyExpression.CALM
+        }
+
         CharacterSprite.draw(
             drawScope = this,
             position = sparkyPos,
             motionProgress = 0.5f,
-            expression = if (selectedTab == OverviewTab.BATTERY) SparkyExpression.EXCITED else SparkyExpression.CALM,
+            expression = expr,
             speedFactor = 1.0f
         )
     }

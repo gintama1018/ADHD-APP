@@ -158,6 +158,44 @@ object CharacterSprite {
                         )
                     }
                 }
+
+                // 6. Anime Emotional Emoticons (User's Anime 2D Style Request)
+                when (expression) {
+                    SparkyExpression.SQUISHED -> {
+                        // Anime Sweat Drop 💧 (Colliding with lattice atoms)
+                        val dropX = cx + 18f
+                        val dropY = cy - 14f
+                        val sweatDrop = Path().apply {
+                            moveTo(dropX, dropY - 6f)
+                            quadraticBezierTo(dropX + 5f, dropY, dropX, dropY + 6f)
+                            quadraticBezierTo(dropX - 5f, dropY, dropX, dropY - 6f)
+                        }
+                        drawPath(sweatDrop, color = Color(0xFF64B5F6))
+                    }
+                    SparkyExpression.EXCITED -> {
+                        // Energy Exclamation ⚡ (Chemical potential born)
+                        val sparkX = cx
+                        val sparkY = cy - 22f
+                        drawLine(
+                            color = Color(0xFFFFD54F),
+                            start = Offset(sparkX, sparkY),
+                            end = Offset(sparkX, sparkY - 8f),
+                            strokeWidth = 3f,
+                            cap = StrokeCap.Round
+                        )
+                        drawCircle(color = Color(0xFFFFD54F), radius = 2f, center = Offset(sparkX, sparkY + 4f))
+                    }
+                    SparkyExpression.CALM -> {
+                        // Sparkle star ✨ (Smooth copper conductor cruise)
+                        val starX = cx + 16f
+                        val starY = cy - 18f
+                        drawLine(Color(0xFF80D8FF), Offset(starX - 4f, starY), Offset(starX + 4f, starY), 2f, StrokeCap.Round)
+                        drawLine(Color(0xFF80D8FF), Offset(starX, starY - 4f), Offset(starX, starY + 4f), 2f, StrokeCap.Round)
+                    }
+                    SparkyExpression.FLOWING -> {
+                        // Flowing equilibrium state
+                    }
+                }
             }
         }
     }

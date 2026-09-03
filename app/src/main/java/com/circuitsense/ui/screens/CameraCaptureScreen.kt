@@ -48,7 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.DeleteSweep
+import com.circuitsense.data.CircuitHistoryManager
 import com.circuitsense.data.SampleCircuits
+import com.circuitsense.data.SavedCircuitItem
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.recognition.CircuitRecognizer
 import com.circuitsense.renderer.CharacterSprite
@@ -62,6 +66,7 @@ import java.util.concurrent.Executors
  * Built with proper system insets (statusBarsPadding, navigationBarsPadding),
  * rich hero showcase, vibrant curated preset cards, and on-device ML Kit camera scanner.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraCaptureScreen(
     onCircuitReady: (CircuitGraph, Boolean, String?) -> Unit
@@ -91,6 +96,7 @@ fun CameraCaptureScreen(
 
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -282,18 +288,90 @@ fun CameraCaptureScreen(
                 }
             }
 
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = CardDark,
-                border = BorderStroke(1.dp, WarmAmber.copy(alpha = 0.6f))
-            ) {
-                Text(
-                    text = "V = IR MVP",
-                    color = WarmAmber,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Study History / Gallery Button
+                IconButton(onClick = { showHistorySheet = true }) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "Study History",
+                        tint = ElectricBlue
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = CardDark,
+                    border = BorderStroke(1.dp, WarmAmber.copy(alpha = 0.6f))
+                ) {
+                    Text(
+                        text = "V = IR MVP",
+                        color = WarmAmber,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+        }
+
+        // Multi-Subject Study Bar (Physics, Mathematics, Chemistry)
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(top = 64.dp, start = 16.dp, end = 16.dp)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = ElectricBlue
+                ) {
+                    Text(
+                        text = "⚡ Physics (Active)",
+                        color = BackgroundDark,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardDark,
+                    border = BorderStroke(1.dp, CardElevated),
+                    modifier = Modifier.clickable {
+                        Toast.makeText(context, "📐 Mathematics: Geometry & Vector diagrams in Phase 2! Physics active.", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text(
+                        text = "📐 Maths (Soon)",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardDark,
+                    border = BorderStroke(1.dp, CardElevated),
+                    modifier = Modifier.clickable {
+                        Toast.makeText(context, "🧪 Chemistry: Molecular bond diagrams in Phase 2! Physics active.", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text(
+                        text = "🧪 Chemistry (Soon)",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
 
@@ -487,6 +565,98 @@ fun CameraCaptureScreen(
                         color = TextMuted,
                         fontSize = 12.sp
                     )
+                }
+            }
+        }
+    }
+
+    // Study History / Saved Simulations Sheet (per user request)
+    if (showHistorySheet) {
+        val historyList = remember { CircuitHistoryManager.getHistory(context) }
+        ModalBottomSheet(
+            onDismissRequest = { showHistorySheet = false },
+            containerColor = CardDark,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = TextMuted) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.History, contentDescription = null, tint = ElectricBlue)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Saved Study History", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (historyList.isNotEmpty()) {
+                        IconButton(onClick = {
+                            CircuitHistoryManager.clearHistory(context)
+                            showHistorySheet = false
+                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = "Clear", tint = TextMuted)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (historyList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No saved circuits yet.\nSave any scanned circuit from the Overview screen to review it here!",
+                            color = TextMuted,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        historyList.forEach { item ->
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = BackgroundDark,
+                                border = BorderStroke(1.dp, CardElevated),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showHistorySheet = false
+                                        try {
+                                            val graph = CircuitGraph.fromJson(item.graphJson)
+                                            onCircuitReady(graph, false, null)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Failed to load saved circuit", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(item.title, color = ElectricBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        Text("${item.voltage.toInt()}V ÷ ${item.resistance.toInt()}Ω = ${item.current}A", color = SuccessGreen, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                                        Text(item.dateFormatted, color = TextMuted, fontSize = 10.sp)
+                                    }
+                                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Load", tint = ElectricBlue)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

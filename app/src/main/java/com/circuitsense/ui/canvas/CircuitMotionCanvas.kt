@@ -23,6 +23,7 @@ import com.circuitsense.renderer.CharacterSprite
 import com.circuitsense.renderer.ComponentAnimationRegistry
 import com.circuitsense.renderer.SparkyExpression
 import com.circuitsense.renderer.StoryPhase
+import com.circuitsense.ui.components.drawPlaygroundDotGrid
 import kotlin.math.sin
 
 /**
@@ -47,8 +48,8 @@ fun CircuitMotionCanvas(
             val canvasW = size.width
             val canvasH = size.height
 
-            // 1. Draw subtle background coordinate grid
-            drawGridBackground(canvasW, canvasH)
+            // 1. Draw Photo 4 Dot-Matrix Playground Background
+            drawPlaygroundDotGrid(canvasW, canvasH)
 
             // 2. Apply Camera Director Viewport Transformation (Pan & Zoom)
             withTransform({
