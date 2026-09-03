@@ -1,0 +1,233 @@
+===================================================================
+IQOO HACKATHON — ONLINE ROUND — 6-DAY EXECUTION PLAN
+Project (working name): CircuitSense — AI Motion-Graphics Physics Tutor
+Solo build | Native Android (Kotlin) | Submission: Video + PPT + Repo
+===================================================================
+
+------------------------------------------------------------------
+0. CORE PREMISE (locked scope — do not expand this during build)
+------------------------------------------------------------------
+User clicks a photo of a simple circuit diagram (V = IR: battery +
+resistor + wire loop). App recognizes the components, converts the
+diagram into a structured JSON graph, then a GENERIC renderer reads
+that JSON and produces a cartoon motion-graphics explanation:
+- zoom into battery -> "current is born" moment
+- current (animated dot/character) flows along wire
+- zoom into resistor -> arrow callout explaining resistance
+- zoom out -> full loop animation with narration
+
+Target audience framing: students with ADHD / low concentration who
+struggle with static textbook diagrams — motion + narration + zoom
+storytelling keeps attention anchored.
+
+HARD SCOPE LOCK: Only Ohm's Law circuit (V=IR) for the MVP. Do NOT
+try to generalize recognition to arbitrary circuits in 6 days solo.
+The architecture (JSON schema + renderer) should LOOK generalizable
+even though recognition is intentionally narrow — that's the honest,
+correct way to show technical depth without overclaiming.
+
+------------------------------------------------------------------
+1. WHY THIS SCOPE (judging alignment)
+------------------------------------------------------------------
+Online round is judged via Video + PPT + Repo, so weight is likely on:
+- End Product Quality -> does the demo actually work end-to-end, live-recorded, not faked
+- Novelty & Impact -> ADHD/attention-engagement framing is your differentiator, sell it hard
+- Technical Depth -> generic JSON-driven renderer, not hardcoded animation-per-diagram
+- Demo & Presentation -> your strongest lane, use it fully
+
+HackTracker (camera/voice/on-device AI usage tracking) and Office Kit
+usage are DEVICE-SCORED at the physical event — not applicable to the
+online round. Still, if you use on-device ML (ML Kit / TFLite) instead
+of a cloud API call, mention it explicitly in the PPT — it strengthens
+your "local/open-source model at core" story for later rounds too.
+
+------------------------------------------------------------------
+2. ARCHITECTURE (what to actually build)
+------------------------------------------------------------------
+[Camera Capture] -> [Recognition Layer] -> [Circuit JSON] -> [Generic
+Animation Renderer] -> [TTS Narration + Zoom/Pan Camera Choreography]
+
+RECOGNITION LAYER — pick the realistic path for solo+6days:
+  Do NOT attempt freehand deep-learning circuit recognition from
+  scratch — too slow to train, too risky to demo live.
+  Instead: constrain input to CLEAN textbook-style diagrams (printed
+  or neatly drawn), and use classical CV / ML Kit on-device:
+    - ML Kit Object Detection (or basic contour/shape detection via
+      OpenCV for Android) to locate: battery symbol, resistor symbol
+      (zigzag), wire loop.
+    - Map detected shapes + their positions to a small, fixed JSON
+      schema (see below).
+  This is honest: an MVP recognizer for ONE diagram class, feeding a
+  general-purpose renderer.
+
+CIRCUIT JSON SCHEMA (example — build renderer to read ONLY this):
+{
+  "components": [
+    { "id": "battery1", "type": "battery", "value": "9V", "x": 50, "y": 200 },
+    { "id": "resistor1", "type": "resistor", "value": "100ohm", "x": 300, "y": 200 }
+  ],
+  "connections": [
+    { "from": "battery1", "to": "resistor1", "path": "top_wire" },
+    { "from": "resistor1", "to": "battery1", "path": "bottom_wire" }
+  ],
+  "formula": { "type": "ohms_law", "V": 9, "I": 0.09, "R": 100 }
+}
+
+RENDERER — this is your technical-depth flex:
+  Build it so it walks the JSON generically: for each component type,
+  it knows how to (a) zoom camera to that component's x/y, (b) play
+  its intro animation, (c) animate the "current" token along a
+  "connections" path. Do NOT hardcode "if battery then do X" logic
+  scattered everywhere — centralize it in a component-animation
+  registry (map of type -> animation behavior). This is what separates
+  "looks generic" from "actually is generic."
+
+TTS: Android built-in TextToSpeech for narration lines synced to
+each animation beat ("Current is generated here...", "Now it hits
+resistance...").
+
+------------------------------------------------------------------
+3. DAY-BY-DAY PLAN (6 days, solo)
+------------------------------------------------------------------
+
+DAY 1 — Setup + Architecture + JSON schema (lock everything early)
+  - Kotlin project skeleton, CameraX integration for photo capture.
+  - Finalize the JSON schema (above) — do NOT touch it again after today.
+  - Set up ML Kit / OpenCV dependency, test basic shape/contour
+    detection on 2-3 sample textbook circuit images (find/photograph
+    these yourself now).
+  - Deliverable by EOD: app opens camera, takes photo, saves it.
+
+DAY 2 — Recognition pipeline (the risky part — front-load it)
+  - Build the detection logic: locate battery symbol + resistor
+    symbol + wire path in the photo.
+  - Convert detected shapes -> your fixed JSON schema.
+  - Accept that this will only work reliably on 2-4 test images you
+    curate yourself — that's fine, that's your MVP scope.
+  - Deliverable by EOD: photo in -> correct JSON out, for your test set.
+
+DAY 3 — Generic animation renderer (core tech-depth showcase)
+  - Build Canvas (Jetpack Compose Canvas or android.graphics.Canvas)
+    based renderer that reads the JSON and:
+      - draws components at their x/y
+      - animates a "current" dot/character along connection paths
+      - supports camera zoom/pan to a component's coordinates
+  - Keep animation logic in a registry/lookup, not if-else chains.
+  - Deliverable by EOD: JSON -> silent animation playing correctly.
+
+DAY 4 — Cartoon polish + narration + zoom choreography
+  - Add simple cartoon character sprite for "current" (even a basic
+    animated circle/face — doesn't need to be studio-quality art).
+  - Wire in TextToSpeech narration synced to animation beats
+    (TEMPLATED strings — no LLM needed for this core narration).
+  - Implement the zoom-in/zoom-out camera-on-canvas transitions you
+    described (battery zoom -> flow -> resistor zoom + arrow callout
+    -> zoom out -> full loop).
+  - Deliverable by EOD: full photo-to-narrated-animation flow works
+    end-to-end on your test circuit. THIS MUST WORK RELIABLY before
+    you touch the optional LLM add-on below.
+  - GO/NO-GO CHECKPOINT: only start Section 6 (on-device LLM) once
+    the above is solid. If you're behind schedule, skip straight to
+    Day 5 instead — core demo > stretch feature, always.
+
+DAY 5 — Testing, polish, and DEMO VIDEO recording
+  - Test on all your sample images, fix crashes/edge cases.
+  - Clean up UI (loading states, error states — don't leave it looking
+    broken if recognition fails on an unexpected image).
+  - Record your actual demo video here (not last-minute on Day 6):
+    show photo capture -> JSON generation (maybe a quick debug overlay
+    showing the JSON, to prove it's real, not pre-baked) -> full
+    animation with narration.
+  - Keep video 3-5 min, matching the eventual live-pitch format.
+
+DAY 6 — PPT + repo cleanup + submission
+  - Build PPT: Problem (ADHD/attention gap) -> Solution -> Architecture
+    diagram (the pipeline above) -> Live demo clip/screenshots ->
+    Tech depth callout (generic JSON renderer, on-device recognition)
+    -> Roadmap (honest: "MVP scoped to Ohm's Law; JSON-driven renderer
+    generalizes to other circuits/diagrams next").
+  - Repo cleanup: README with setup instructions, architecture
+    explanation, attribution for ML Kit/OpenCV/any open-source libs
+    used (mandatory per rules).
+  - Submit on Reskilll platform with buffer time before hard cutoff —
+    do not submit at the last minute.
+
+------------------------------------------------------------------
+4. WHAT NOT TO DO (learned from your past audit patterns)
+------------------------------------------------------------------
+- Do NOT hardcode a single fallback animation and present it as if
+  the system "understands" any circuit — be explicit in the PPT that
+  recognition is MVP-scoped to Ohm's Law diagrams.
+- Do NOT claim on-device AI if you're secretly calling a cloud API —
+  if you use ML Kit/OpenCV on-device, say so explicitly; if you use
+  cloud vision API, don't claim "on-device NPU inference."
+  (Instrumentation/HackTracker or a future audit WILL catch this
+  mismatch if you progress to city battle.)
+- Do NOT try to add more circuit types or extra features mid-week.
+  Scope creep is your #1 risk as a solo dev on a 6-day clock.
+- Do NOT record the demo video on the last day — Day 5 is deliberately
+  reserved for this so Day 6 is buffer, not panic.
+
+------------------------------------------------------------------
+6. OPTIONAL STRETCH ADD-ON: ON-DEVICE OFFLINE LLM ("Ask a Doubt")
+------------------------------------------------------------------
+NOT required for the core pipeline — narration for the fixed V=IR
+demo is fully templated (hardcoded strings), no LLM needed there.
+This add-on is ONLY for a bolt-on open-ended Q&A chat that appears
+AFTER the animation finishes, where the student can ask a free-form
+question ("why did the current decrease?") and get an answer without
+internet. This is what genuinely earns the "on-device AI in the
+build" narrative for judges.
+
+RECOMMENDED STACK:
+  - Google MediaPipe LLM Inference API (com.google.mediapipe:tasks-genai)
+    — official Kotlin/Android SDK, far less painful than raw llama.cpp
+    JNI integration for a solo 6-day build.
+  - Model: Gemma 3 1B, int4 quantized (~500MB). Small enough to be
+    responsive, large enough to give coherent physics answers.
+  - Runs via GPU delegate — fully offline once downloaded. This is
+    NOT true Snapdragon-NPU-specific execution (that needs Qualcomm's
+    QNN/AI Hub toolchain — too heavy for solo+6days). Mention NPU-
+    specific optimization as a named ROADMAP item for city battle /
+    finale stage instead of claiming it now.
+
+CRITICAL IMPLEMENTATION NOTES:
+  - DO NOT commit the model file to the git repo. ~500MB will blow
+    past GitHub's practical limits and complicate "repo before
+    cutoff" submission. Download the model on first app launch to
+    the device's local storage, then load it from there. State this
+    architecture clearly in the README and demo video ("downloads a
+    quantized model once, fully offline after that").
+  - Keep this LLM COMPLETELY OUT of the core recognition/animation
+    control flow. It must be a bolt-on feature that, if it breaks or
+    lags, does not take down or block the core working demo.
+  - Test actual response latency on real hardware before relying on
+    it for the demo video. Target ~5-15 tokens/sec on a 1B model. If
+    it's noticeably slow, it undercuts your own "keeps ADHD students
+    engaged" pitch — a laggy chatbot is the opposite of engaging.
+
+GO/NO-GO RULE: Attempt this only after Day 4's core deliverable
+(photo -> recognition -> JSON -> animation -> narration) is fully
+working and stable. If by mid-Day 4 the LLM integration isn't
+solidly working, CUT IT. Submit with templated narration only. A
+smaller working product beats a bigger broken one, every time.
+
+------------------------------------------------------------------
+7. SUBMISSION CHECKLIST
+------------------------------------------------------------------
+[ ] Video (3-5 min): problem framing -> live working demo -> tech
+    architecture callout -> closing impact statement
+[ ] PPT: Problem, Solution, Architecture diagram, Demo screenshots,
+    Tech depth (JSON schema + generic renderer), honest roadmap/scope
+[ ] Repo: clean commit history reflecting event-window build (avoid
+    dumping one giant initial commit — commit incrementally as you go,
+    Day 1 through Day 6, this also protects you against "original
+    work" verification concerns)
+[ ] README: setup steps, architecture explanation, open-source
+    library attributions
+[ ] Everything submitted with buffer time before the Reskilll hard
+    cutoff — not at the deadline minute
+
+===================================================================
+END OF PLAN
+===================================================================
