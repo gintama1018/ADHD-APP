@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">CircuitSense</string>
+    <string name="tagline">AI Motion-Graphics Physics Tutor</string>
+    <string name="camera_permission_required">Camera permission is needed to scan circuit diagrams.</string>
+</resources>
