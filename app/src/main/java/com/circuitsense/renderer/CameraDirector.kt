@@ -7,7 +7,7 @@ import com.circuitsense.model.CircuitGraph
  * Storytelling phases for the physics tutor motion graphics.
  */
 enum class StoryPhase(val title: String, val subtitle: String) {
-    OVERVIEW("Circuit Schematics", "Recognized circuit graph loaded from JSON"),
+    OVERVIEW("Circuit Overview", "Recognized circuit graph loaded from JSON"),
     BATTERY_FOCUS("Step 1: Current is Born", "Chemical potential sets up electric field (Voltage)"),
     WIRE_TRANSIT("Step 2: Traveling along the Conductor", "Electrons accelerate through the metallic wire"),
     RESISTOR_FOCUS("Step 3: Resistance Encountered", "Collisions with lattice atoms impede electron flow"),

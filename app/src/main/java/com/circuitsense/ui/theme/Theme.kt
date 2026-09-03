@@ -7,14 +7,14 @@ import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = ElectricBlue,
-    secondary = NeonAmber,
-    tertiary = ResistorOrange,
-    background = SpaceDark,
+    secondary = WarmAmber,
+    tertiary = SuccessGreen,
+    background = BackgroundDark,
     surface = CardDark,
-    onPrimary = Color(0xFF0F111A),
-    onSecondary = Color(0xFF0F111A),
-    onBackground = Color.White,
-    onSurface = Color.White
+    onPrimary = BackgroundDark,
+    onSecondary = BackgroundDark,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary
 )
 
 @Composable

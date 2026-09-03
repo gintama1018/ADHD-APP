@@ -20,16 +20,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.circuitsense.model.CircuitGraph
+import com.circuitsense.ui.theme.*
+import java.util.regex.Pattern
 
 /**
- * Bottom Sheet displaying the active Circuit JSON Graph.
- * Crucial judging differentiator: proves to judges that the animation is
- * driven 100% generically from structured JSON, not hardcoded animations!
+ * Screen 4 — JSON Inspector Sheet (per DESIGN.md Section 6).
+ * Simple modal bottom sheet, dark card background, monospace JSON text
+ * with syntax coloring: keys in electric blue, values in amber/green.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,18 +45,19 @@ fun JsonInspectorSheet(
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
     val jsonString = remember(graph) { graph.toJson() }
+    val syntaxHighlighted = remember(jsonString) { highlightJson(jsonString) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141824),
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Color(0xFF90A4AE)) }
+        containerColor = CardDark,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextMuted) }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            // Header
+            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -61,13 +67,13 @@ fun JsonInspectorSheet(
                     Icon(
                         imageVector = Icons.Default.DataObject,
                         contentDescription = null,
-                        tint = Color(0xFF00E5FF),
+                        tint = ElectricBlue,
                         modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Circuit Graph JSON",
-                        color = Color.White,
+                        text = "CircuitGraph JSON Schema",
+                        color = TextPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -76,7 +82,8 @@ fun JsonInspectorSheet(
                 IconButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Circuit JSON", jsonString))
+                        val clip = ClipData.newPlainText("Circuit JSON", jsonString)
+                        clipboard.setPrimaryClip(clip)
                         copied = true
                         Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
                     }
@@ -84,14 +91,14 @@ fun JsonInspectorSheet(
                     Icon(
                         imageVector = if (copied) Icons.Default.Done else Icons.Default.ContentCopy,
                         contentDescription = "Copy JSON",
-                        tint = if (copied) Color(0xFF00E676) else Color(0xFF00E5FF)
+                        tint = if (copied) SuccessGreen else ElectricBlue
                     )
                 }
             }
 
             Text(
-                text = "This structured JSON graph drives the generic Compose Canvas renderer and physics choreography.",
-                color = Color(0xFF90A4AE),
+                text = "Live structured graph feeding the generic Canvas renderer and 4-beat camera choreography.",
+                color = TextMuted,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
             )
@@ -101,16 +108,15 @@ fun JsonInspectorSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp)
-                    .background(Color(0xFF0A0D14), RoundedCornerShape(12.dp))
+                    .background(BackgroundDark, RoundedCornerShape(16.dp))
                     .padding(14.dp)
                     .verticalScroll(rememberScrollState())
                     .horizontalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = jsonString,
+                    text = syntaxHighlighted,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
-                    color = Color(0xFF80D8FF),
+                    fontSize = 12.5.sp,
                     lineHeight = 18.sp
                 )
             }
@@ -118,4 +124,44 @@ fun JsonInspectorSheet(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+/**
+ * Applies syntax highlighting:
+ * - Keys ("key":) -> ElectricBlue
+ * - Strings ("value") -> SuccessGreen
+ * - Numbers / Booleans -> WarmAmber
+ * - Punctuation -> TextMuted
+ */
+private fun highlightJson(rawJson: String): AnnotatedString {
+    val builder = AnnotatedString.Builder(rawJson)
+
+    // Match JSON keys: "key":
+    val keyPattern = Pattern.compile("\"([^\"]+)\"\\s*:")
+    val keyMatcher = keyPattern.matcher(rawJson)
+    while (keyMatcher.find()) {
+        val start = keyMatcher.start(1) - 1
+        val end = keyMatcher.end(1) + 1
+        builder.addStyle(SpanStyle(color = ElectricBlue, fontWeight = FontWeight.SemiBold), start, end)
+    }
+
+    // Match numeric values: : 123.45
+    val numPattern = Pattern.compile(":\\s*(-?\\d+(\\.\\d+)?)")
+    val numMatcher = numPattern.matcher(rawJson)
+    while (numMatcher.find()) {
+        val start = numMatcher.start(1)
+        val end = numMatcher.end(1)
+        builder.addStyle(SpanStyle(color = WarmAmber, fontWeight = FontWeight.Bold), start, end)
+    }
+
+    // Match string values: : "value"
+    val valStringPattern = Pattern.compile(":\\s*\"([^\"]*)\"")
+    val valStringMatcher = valStringPattern.matcher(rawJson)
+    while (valStringMatcher.find()) {
+        val start = valStringMatcher.start(1) - 1
+        val end = valStringMatcher.end(1) + 1
+        builder.addStyle(SpanStyle(color = SuccessGreen), start, end)
+    }
+
+    return builder.toAnnotatedString()
 }

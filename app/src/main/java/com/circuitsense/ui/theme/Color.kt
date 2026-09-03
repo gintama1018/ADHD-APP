@@ -2,13 +2,15 @@ package com.circuitsense.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val SpaceDark = Color(0xFF0F111A)
-val CardDark = Color(0xFF141824)
-val ElectricBlue = Color(0xFF00E5FF)
-val NeonAmber = Color(0xFFFFAB00)
-val ResistorOrange = Color(0xFFFF6D00)
-val SoftCyan = Color(0xFF80D8FF)
-val WireGray = Color(0xFF37474F)
-val PlatePositive = Color(0xFF00E5FF)
-val PlateNegative = Color(0xFFFF5252)
-val TextMuted = Color(0xFF90A4AE)
+// Palette from DESIGN.md
+val BackgroundDark = Color(0xFF0D1321)
+val CardDark = Color(0xFF1B2333)
+val CardElevated = Color(0xFF222B3D)
+val ElectricBlue = Color(0xFF2EC5FF)
+val WarmAmber = Color(0xFFFF9F45)
+val SuccessGreen = Color(0xFF4ADE80)
+val WarningYellow = Color(0xFFFACC15)
+val TextPrimary = Color(0xFFF1F5F9)
+val TextMuted = Color(0xFF94A3B8)
+val WireConductor = Color(0xFF475569)
+val WireGlow = Color(0x402EC5FF)

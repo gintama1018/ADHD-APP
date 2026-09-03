@@ -21,6 +21,7 @@ import com.circuitsense.renderer.CameraDirector
 import com.circuitsense.renderer.CameraTransform
 import com.circuitsense.renderer.CharacterSprite
 import com.circuitsense.renderer.ComponentAnimationRegistry
+import com.circuitsense.renderer.SparkyExpression
 import com.circuitsense.renderer.StoryPhase
 import kotlin.math.sin
 
@@ -155,34 +156,28 @@ private fun DrawScope.drawCircuitWires(
     resistorY: Float
 ) {
     val wirePath = Path().apply {
-        // Battery top lead to top wire
+        // Battery top lead curving gently up to top wire
         moveTo(startX, batteryY - 35f)
-        lineTo(startX, topY)
-        // Top wire towards resistor
-        lineTo(endX, topY)
-        // Top wire down to resistor top lead
-        lineTo(endX, resistorY - 35f)
+        quadraticBezierTo(startX, topY, (startX + endX) / 2f, topY)
+        quadraticBezierTo(endX, topY, endX, resistorY - 35f)
 
-        // Resistor bottom lead to bottom wire
+        // Resistor bottom lead curving gently down to bottom wire
         moveTo(endX, resistorY + 35f)
-        lineTo(endX, bottomY)
-        // Bottom wire back towards battery
-        lineTo(startX, bottomY)
-        // Bottom wire up to battery bottom lead
-        lineTo(startX, batteryY + 35f)
+        quadraticBezierTo(endX, bottomY, (startX + endX) / 2f, bottomY)
+        quadraticBezierTo(startX, bottomY, startX, batteryY + 35f)
     }
 
     // Outer subtle copper wire glow
     drawPath(
         path = wirePath,
-        color = Color(0x3300E5FF),
+        color = Color(0x332EC5FF),
         style = Stroke(width = 12f, cap = StrokeCap.Round, join = StrokeJoin.Round)
     )
 
     // Solid conductor line
     drawPath(
         path = wirePath,
-        color = Color(0xFF37474F),
+        color = Color(0xFF475569),
         style = Stroke(width = 5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
     )
 }
@@ -204,51 +199,49 @@ private fun DrawScope.renderCurrentFlow(
                 drawScope = this,
                 position = Offset(bX, topY),
                 motionProgress = progress,
-                isResisting = false,
+                expression = SparkyExpression.CALM,
                 speedFactor = 0.5f
             )
         }
         StoryPhase.BATTERY_FOCUS -> {
-            // Sparky appears at the battery terminal with rising excitement
+            // Sparky appears at the battery terminal with excited wide eyes
             val bounceY = topY + sin(progress * 8f) * 6f
             CharacterSprite.draw(
                 drawScope = this,
                 position = Offset(bX, bounceY),
                 motionProgress = progress,
-                isResisting = false,
+                expression = SparkyExpression.EXCITED,
                 speedFactor = 1.0f
             )
         }
         StoryPhase.WIRE_TRANSIT -> {
-            // Sparky runs along the top wire
+            // Sparky runs along the top wire with calm content smile
             val currentX = bX + (rX - bX) * progress.coerceIn(0f, 1f)
             CharacterSprite.draw(
                 drawScope = this,
                 position = Offset(currentX, topY),
                 motionProgress = progress,
-                isResisting = false,
+                expression = SparkyExpression.CALM,
                 speedFactor = 1.5f
             )
         }
         StoryPhase.RESISTOR_FOCUS -> {
-            // Sparky is inside the resistor, struggling through the zigzag
+            // Sparky inside the resistor, non-uniformly squished by resistance collisions
             val jitterX = rX + sin(progress * 25f) * 4f
             val jitterY = rY + sin(progress * 30f) * 3f
             CharacterSprite.draw(
                 drawScope = this,
                 position = Offset(jitterX, jitterY),
                 motionProgress = progress,
-                isResisting = true,
+                expression = SparkyExpression.SQUISHED,
                 speedFactor = 0.6f
             )
         }
         StoryPhase.FULL_LOOP -> {
             // Continuous looped current flow
-            // Speed scaled with current I = V / R
             val speedMultiplier = (currentAmps * 2.0).coerceIn(0.5, 4.0).toFloat()
             val loopProgress = (progress * speedMultiplier) % 1.0f
 
-            // Calculate position along rectangular loop
             val totalPerimeter = 2 * (rX - bX) + 2 * (bottomY - topY)
             val topDist = (rX - bX)
             val rightDist = (bottomY - topY)
@@ -257,21 +250,17 @@ private fun DrawScope.renderCurrentFlow(
             val currentDist = loopProgress * totalPerimeter
             val pos: Offset = when {
                 currentDist < topDist -> {
-                    // Moving right along top wire
                     Offset(bX + currentDist, topY)
                 }
                 currentDist < topDist + rightDist -> {
-                    // Moving down through resistor
                     val d = currentDist - topDist
                     Offset(rX, topY + d)
                 }
                 currentDist < topDist + rightDist + bottomDist -> {
-                    // Moving left along bottom wire
                     val d = currentDist - (topDist + rightDist)
                     Offset(rX - d, bottomY)
                 }
                 else -> {
-                    // Moving up through battery
                     val d = currentDist - (topDist + rightDist + bottomDist)
                     Offset(bX, bottomY - d)
                 }
@@ -279,12 +268,12 @@ private fun DrawScope.renderCurrentFlow(
 
             val isInResistor = (pos.x in (rX - 30f)..(rX + 30f)) && (pos.y in (topY + 20f)..(bottomY - 20f))
 
-            // Draw leading character sprite
+            // Draw leading character sprite with expression matching state
             CharacterSprite.draw(
                 drawScope = this,
                 position = pos,
                 motionProgress = progress,
-                isResisting = isInResistor,
+                expression = if (isInResistor) SparkyExpression.SQUISHED else SparkyExpression.FLOWING,
                 speedFactor = speedMultiplier
             )
 
@@ -294,7 +283,7 @@ private fun DrawScope.renderCurrentFlow(
                 val secDist = offsetFraction * totalPerimeter
                 val secPos = calculateLoopPosition(secDist, bX, rX, topY, bottomY)
                 drawCircle(
-                    color = Color(0xFF00E5FF).copy(alpha = 0.75f),
+                    color = Color(0xFF2EC5FF).copy(alpha = 0.75f),
                     radius = 8f,
                     center = secPos
                 )

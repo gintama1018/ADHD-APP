@@ -9,15 +9,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import com.circuitsense.data.SampleCircuits
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.ui.screens.CameraCaptureScreen
+import com.circuitsense.ui.screens.DetectionOverviewScreen
 import com.circuitsense.ui.screens.TutorPlaybackScreen
+import com.circuitsense.ui.theme.BackgroundDark
 import com.circuitsense.ui.theme.CircuitSenseTheme
 
 sealed class AppScreen {
     data object Camera : AppScreen()
+    data class Overview(
+        val graph: CircuitGraph,
+        val isFallback: Boolean = false,
+        val fallbackReason: String? = null
+    ) : AppScreen()
     data class Tutor(
         val graph: CircuitGraph,
         val isFallback: Boolean = false,
@@ -34,7 +39,7 @@ class MainActivity : ComponentActivity() {
             CircuitSenseTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF0F111A)
+                    color = BackgroundDark
                 ) {
                     var currentScreen by remember {
                         mutableStateOf<AppScreen>(AppScreen.Camera)
@@ -48,7 +53,24 @@ class MainActivity : ComponentActivity() {
                             is AppScreen.Camera -> {
                                 CameraCaptureScreen(
                                     onCircuitReady = { recognizedGraph, isFallback, fallbackReason ->
-                                        currentScreen = AppScreen.Tutor(recognizedGraph, isFallback, fallbackReason)
+                                        currentScreen = AppScreen.Overview(recognizedGraph, isFallback, fallbackReason)
+                                    }
+                                )
+                            }
+                            is AppScreen.Overview -> {
+                                DetectionOverviewScreen(
+                                    graph = screen.graph,
+                                    isFallback = screen.isFallback,
+                                    fallbackReason = screen.fallbackReason,
+                                    onStartTutor = {
+                                        currentScreen = AppScreen.Tutor(
+                                            graph = screen.graph,
+                                            isFallback = screen.isFallback,
+                                            fallbackReason = screen.fallbackReason
+                                        )
+                                    },
+                                    onRescanClick = {
+                                        currentScreen = AppScreen.Camera
                                     }
                                 )
                             }
@@ -58,7 +80,11 @@ class MainActivity : ComponentActivity() {
                                     isFallback = screen.isFallback,
                                     fallbackReason = screen.fallbackReason,
                                     onRescanClick = {
-                                        currentScreen = AppScreen.Camera
+                                        currentScreen = AppScreen.Overview(
+                                            graph = screen.graph,
+                                            isFallback = screen.isFallback,
+                                            fallbackReason = screen.fallbackReason
+                                        )
                                     }
                                 )
                             }

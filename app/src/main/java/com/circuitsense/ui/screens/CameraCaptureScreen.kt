@@ -37,11 +37,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import androidx.core.content.ContextCompat
 import com.circuitsense.data.SampleCircuitItem
 import com.circuitsense.data.SampleCircuits
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.recognition.CircuitRecognizer
+import com.circuitsense.renderer.CharacterSprite
+import com.circuitsense.renderer.SparkyExpression
+import com.circuitsense.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -148,18 +154,19 @@ fun CameraCaptureScreen(
             }
         }
 
-        // Circuit Alignment Target Frame
+        // Circuit Alignment Target Frame (Round, not sharp per DESIGN.md)
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(width = 300.dp, height = 220.dp)
-                .border(2.dp, Color(0x9900E5FF), RoundedCornerShape(16.dp))
-                .padding(12.dp)
+                .border(2.5.dp, ElectricBlue.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                .padding(14.dp)
         ) {
             Text(
                 text = "Align Ohm's Law Circuit Here",
                 color = Color(0xCCFFFFFF),
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
@@ -238,8 +245,9 @@ fun CameraCaptureScreen(
             ) {
                 items(SampleCircuits.items) { sample ->
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF1E2433),
+                        shape = RoundedCornerShape(20.dp),
+                        color = CardDark,
+                        border = BorderStroke(1.dp, CardElevated),
                         modifier = Modifier.clickable {
                             onCircuitReady(sample.graph, false, null)
                         }
@@ -263,59 +271,86 @@ fun CameraCaptureScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Capture Shutter Button
-            IconButton(
-                onClick = {
-                    val capture = imageCapture
-                    if (capture != null && !isAnalyzing) {
-                        isAnalyzing = true
-                        val executor = Executors.newSingleThreadExecutor()
-                        capture.takePicture(
-                            executor,
-                            object : ImageCapture.OnImageCapturedCallback() {
-                                override fun onCaptureSuccess(image: ImageProxy) {
-                                    val bitmap = imageProxyToBitmap(image)
-                                    image.close()
-                                    coroutineScope.launch {
-                                        val result = recognizer.analyzeCircuitImage(bitmap)
-                                        isAnalyzing = false
-                                        onCircuitReady(result.graph, result.isFallbackUsed, result.fallbackReason)
-                                    }
-                                }
-
-                                override fun onError(exception: ImageCaptureException) {
-                                    isAnalyzing = false
-                                    coroutineScope.launch {
-                                        Toast.makeText(context, "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        )
-                    } else if (!hasCameraPermission) {
-                        // If camera not permitted, use default sample with explicit fallback banner
-                        onCircuitReady(
-                            SampleCircuits.defaultSample.graph,
-                            true,
-                            "Camera permission required for live scan — showing reference circuit (9V, 100Ω)"
+            // Capture Shutter Button Row with idle Sparky presence (DESIGN.md)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Idle Sparky friendly companion
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(end = 6.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        CharacterSprite.draw(
+                            drawScope = this,
+                            position = Offset(size.width / 2f, size.height / 2f),
+                            motionProgress = 0f,
+                            expression = SparkyExpression.EXCITED,
+                            speedFactor = 1.0f
                         )
                     }
-                },
-                modifier = Modifier
-                    .size(68.dp)
-                    .background(Color(0xFF00E5FF), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Capture",
-                    tint = Color(0xFF0F111A),
-                    modifier = Modifier.size(32.dp)
-                )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                IconButton(
+                    onClick = {
+                        val capture = imageCapture
+                        if (capture != null && !isAnalyzing) {
+                            isAnalyzing = true
+                            val executor = Executors.newSingleThreadExecutor()
+                            capture.takePicture(
+                                executor,
+                                object : ImageCapture.OnImageCapturedCallback() {
+                                    override fun onCaptureSuccess(image: ImageProxy) {
+                                        val bitmap = imageProxyToBitmap(image)
+                                        image.close()
+                                        coroutineScope.launch {
+                                            val result = recognizer.analyzeCircuitImage(bitmap)
+                                            isAnalyzing = false
+                                            onCircuitReady(result.graph, result.isFallbackUsed, result.fallbackReason)
+                                        }
+                                    }
+
+                                    override fun onError(exception: ImageCaptureException) {
+                                        isAnalyzing = false
+                                        coroutineScope.launch {
+                                            Toast.makeText(context, "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                        } else if (!hasCameraPermission) {
+                            // If camera not permitted, use default sample with explicit fallback banner
+                            onCircuitReady(
+                                SampleCircuits.defaultSample.graph,
+                                true,
+                                "Camera permission required for live scan — showing reference circuit (9V, 100Ω)"
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .size(68.dp)
+                        .background(ElectricBlue, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Capture",
+                        tint = BackgroundDark,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(48.dp)) // balance row
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Tap to Scan Diagram with On-Device ML Kit",
-                color = Color(0xFF90A4AE),
+                color = TextMuted,
                 fontSize = 12.sp
             )
         }
