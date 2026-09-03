@@ -91,7 +91,7 @@ class BatteryComponentRenderer : ComponentRenderer {
         with(drawScope) {
             // If focused, draw pulsing electric field aura
             if (isFocused) {
-                val pulseRadius = 60f + (sin(animationProgress * 6.28f) * 8f)
+                val pulseRadius = 55f + (sin(animationProgress * 6.28f) * 8f)
                 drawCircle(
                     color = Color(0x3300E5FF),
                     radius = pulseRadius,
@@ -99,22 +99,22 @@ class BatteryComponentRenderer : ComponentRenderer {
                 )
             }
 
-            // Positive terminal plate (longer, thinner plate on right or top)
-            val plateHalfHeight = 35f
+            // Positive terminal plate (longer horizontal plate at top)
+            val plateHalfWidth = 28f
             drawLine(
                 color = Color(0xFF00E5FF),
-                start = Offset(cx - 14f, cy - plateHalfHeight),
-                end = Offset(cx - 14f, cy + plateHalfHeight),
+                start = Offset(cx - plateHalfWidth, cy - 10f),
+                end = Offset(cx + plateHalfWidth, cy - 10f),
                 strokeWidth = strokeWidth,
                 cap = StrokeCap.Round
             )
 
-            // Negative terminal plate (shorter, thicker plate on left)
-            val negHalfHeight = 20f
+            // Negative terminal plate (shorter, thicker horizontal plate at bottom)
+            val negHalfWidth = 16f
             drawLine(
                 color = Color(0xFFFF5252),
-                start = Offset(cx + 14f, cy - negHalfHeight),
-                end = Offset(cx + 14f, cy + negHalfHeight),
+                start = Offset(cx - negHalfWidth, cy + 10f),
+                end = Offset(cx + negHalfWidth, cy + 10f),
                 strokeWidth = strokeWidth * 1.8f,
                 cap = StrokeCap.Round
             )
@@ -123,15 +123,15 @@ class BatteryComponentRenderer : ComponentRenderer {
             // "+" symbol near positive plate
             drawLine(
                 color = Color(0xFF00E5FF),
-                start = Offset(cx - 30f, cy - 20f),
-                end = Offset(cx - 30f, cy - 10f),
+                start = Offset(cx - 36f, cy - 14f),
+                end = Offset(cx - 36f, cy - 6f),
                 strokeWidth = 3f,
                 cap = StrokeCap.Round
             )
             drawLine(
                 color = Color(0xFF00E5FF),
-                start = Offset(cx - 35f, cy - 15f),
-                end = Offset(cx - 25f, cy - 15f),
+                start = Offset(cx - 40f, cy - 10f),
+                end = Offset(cx - 32f, cy - 10f),
                 strokeWidth = 3f,
                 cap = StrokeCap.Round
             )
@@ -139,24 +139,28 @@ class BatteryComponentRenderer : ComponentRenderer {
             // "-" symbol near negative plate
             drawLine(
                 color = Color(0xFFFF5252),
-                start = Offset(cx + 25f, cy - 15f),
-                end = Offset(cx + 35f, cy - 15f),
+                start = Offset(cx - 40f, cy + 10f),
+                end = Offset(cx - 32f, cy + 10f),
                 strokeWidth = 3f,
                 cap = StrokeCap.Round
             )
 
-            // Connecting stubs
+            // Top lead stub (connects seamlessly to top wire at cy - 35f)
             drawLine(
-                color = Color(0xFFB0BEC5),
-                start = Offset(cx - 45f, cy),
-                end = Offset(cx - 14f, cy),
-                strokeWidth = 4f
+                color = Color(0xFF475569),
+                start = Offset(cx, cy - 35f),
+                end = Offset(cx, cy - 10f),
+                strokeWidth = 5f,
+                cap = StrokeCap.Round
             )
+
+            // Bottom lead stub (connects seamlessly to bottom wire at cy + 35f)
             drawLine(
-                color = Color(0xFFB0BEC5),
-                start = Offset(cx + 14f, cy),
-                end = Offset(cx + 45f, cy),
-                strokeWidth = 4f
+                color = Color(0xFF475569),
+                start = Offset(cx, cy + 10f),
+                end = Offset(cx, cy + 35f),
+                strokeWidth = 5f,
+                cap = StrokeCap.Round
             )
         }
     }
@@ -178,6 +182,7 @@ class BatteryComponentRenderer : ComponentRenderer {
  * Resistor Renderer:
  * Visualizes zigzag resistor symbol with animated resistance friction callout,
  * electron scattering nodes, and heat dissipation waves.
+ * Oriented along the right circuit leg with vertical leads.
  */
 class ResistorComponentRenderer : ComponentRenderer {
 
@@ -197,22 +202,20 @@ class ResistorComponentRenderer : ComponentRenderer {
                 val heatAlpha = (0.25f + 0.15f * sin(animationProgress * 10f)).coerceIn(0.1f, 0.5f)
                 drawCircle(
                     color = Color(0xFFFF6D00).copy(alpha = heatAlpha),
-                    radius = 55f,
+                    radius = 50f,
                     center = Offset(cx, cy)
                 )
             }
 
-            // Zigzag Path
+            // Vertical Zigzag Path from (cx, cy - 35f) to (cx, cy + 35f)
             val zigzagPath = Path().apply {
-                val startX = cx - 45f
-                moveTo(startX, cy)
-                lineTo(startX + 10f, cy)
-                lineTo(startX + 18f, cy - 18f)
-                lineTo(startX + 34f, cy + 18f)
-                lineTo(startX + 50f, cy - 18f)
-                lineTo(startX + 66f, cy + 18f)
-                lineTo(startX + 74f, cy)
-                lineTo(startX + 90f, cy)
+                moveTo(cx, cy - 35f)
+                lineTo(cx, cy - 25f)
+                lineTo(cx - 14f, cy - 17f)
+                lineTo(cx + 14f, cy - 1f)
+                lineTo(cx - 14f, cy + 15f)
+                lineTo(cx, cy + 25f)
+                lineTo(cx, cy + 35f)
             }
 
             // Resistor conductor
@@ -231,15 +234,15 @@ class ResistorComponentRenderer : ComponentRenderer {
                 val waveOffset = (animationProgress * 30f) % 20f
                 drawLine(
                     color = Color(0xFFFF3D00).copy(alpha = 0.7f),
-                    start = Offset(cx - 20f, cy - 25f - waveOffset),
-                    end = Offset(cx - 15f, cy - 35f - waveOffset),
+                    start = Offset(cx + 20f, cy - 15f - waveOffset),
+                    end = Offset(cx + 30f, cy - 20f - waveOffset),
                     strokeWidth = 2.5f,
                     cap = StrokeCap.Round
                 )
                 drawLine(
                     color = Color(0xFFFF3D00).copy(alpha = 0.7f),
-                    start = Offset(cx + 10f, cy - 25f - waveOffset),
-                    end = Offset(cx + 15f, cy - 35f - waveOffset),
+                    start = Offset(cx + 20f, cy + 10f - waveOffset),
+                    end = Offset(cx + 30f, cy + 5f - waveOffset),
                     strokeWidth = 2.5f,
                     cap = StrokeCap.Round
                 )

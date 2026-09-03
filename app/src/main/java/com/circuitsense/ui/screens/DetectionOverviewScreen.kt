@@ -400,15 +400,15 @@ private fun CartoonDiagramCanvas(
         val topY = h * 0.28f
         val bottomY = h * 0.72f
 
-        // 2. Gently curved cartoon wire path
+        // 2. Gently curved cartoon wire path connecting directly to component leads
         val wirePath = Path().apply {
-            moveTo(bX, bY - 30f)
+            moveTo(bX, bY - 35f)
             quadraticBezierTo(bX, topY, (bX + rX) / 2f, topY)
-            quadraticBezierTo(rX, topY, rX, rY - 30f)
+            quadraticBezierTo(rX, topY, rX, rY - 35f)
 
-            moveTo(rX, rY + 30f)
+            moveTo(rX, rY + 35f)
             quadraticBezierTo(rX, bottomY, (bX + rX) / 2f, bottomY)
-            quadraticBezierTo(bX, bottomY, bX, bY + 30f)
+            quadraticBezierTo(bX, bottomY, bX, bY + 35f)
         }
 
         // Wire glow & core
@@ -450,10 +450,10 @@ private fun CartoonDiagramCanvas(
 
         // 4. Sparky with Anime Expression
         val sparkyPos = when (selectedTab) {
-            OverviewTab.BATTERY -> Offset(bX, topY)
+            OverviewTab.BATTERY -> Offset(bX, bY)
             OverviewTab.WIRE -> Offset((bX + rX) / 2f, topY)
-            OverviewTab.RESISTOR -> Offset(rX, topY)
-            OverviewTab.OVERVIEW -> Offset(bX, topY)
+            OverviewTab.RESISTOR -> Offset(rX, rY)
+            OverviewTab.OVERVIEW -> Offset(bX, bY)
         }
 
         val expr = when (selectedTab) {

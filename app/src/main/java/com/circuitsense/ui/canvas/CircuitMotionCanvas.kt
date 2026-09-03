@@ -83,18 +83,25 @@ fun CircuitMotionCanvas(
                     resistorY = rY
                 )
 
-                // 4. Render Components generically from Registry
+                // 4. Render Components precisely at wire gap junctions
                 val currentAmps = graph.formula.I
                 graph.components.forEach { comp ->
-                    val isFocused = when (comp.type.lowercase()) {
-                        "battery" -> currentPhase == StoryPhase.BATTERY_FOCUS
-                        "resistor" -> currentPhase == StoryPhase.RESISTOR_FOCUS
+                    val isBattery = comp.type.equals("battery", ignoreCase = true)
+                    val isResistor = comp.type.equals("resistor", ignoreCase = true)
+
+                    val isFocused = when {
+                        isBattery -> currentPhase == StoryPhase.BATTERY_FOCUS
+                        isResistor -> currentPhase == StoryPhase.RESISTOR_FOCUS
                         else -> false
                     }
 
+                    // Align precisely with the left/right wire endpoints!
+                    val compX = if (isBattery) bX else rX
+                    val compY = if (isBattery) bY else rY
+
                     val adjustedComp = comp.copy(
-                        x = comp.x * scaleRatioX,
-                        y = comp.y * scaleRatioY
+                        x = compX,
+                        y = compY
                     )
 
                     val renderer = ComponentAnimationRegistry.getRenderer(comp.type)
@@ -112,6 +119,7 @@ fun CircuitMotionCanvas(
                     phase = currentPhase,
                     progress = animationProgress,
                     bX = bX,
+                    bY = bY,
                     rX = rX,
                     rY = rY,
                     topY = topWireY,
@@ -140,8 +148,8 @@ private fun DrawScope.drawGridBackground(w: Float, h: Float) {
         var y = 0f
         while (y < h) {
             drawCircle(
-                color = Color(0x1A00E5FF),
-                radius = 1.2f,
+                color = Color(0x222EC5FF),
+                radius = 1.5f,
                 center = Offset(x, y)
             )
             y += step
@@ -189,6 +197,7 @@ private fun DrawScope.renderCurrentFlow(
     phase: StoryPhase,
     progress: Float,
     bX: Float,
+    bY: Float,
     rX: Float,
     rY: Float,
     topY: Float,
@@ -197,10 +206,10 @@ private fun DrawScope.renderCurrentFlow(
 ) {
     when (phase) {
         StoryPhase.OVERVIEW -> {
-            // Idle subtle pulse at battery
+            // Idle subtle pulse right at battery
             CharacterSprite.draw(
                 drawScope = this,
-                position = Offset(bX, topY),
+                position = Offset(bX, bY),
                 motionProgress = progress,
                 expression = SparkyExpression.CALM,
                 speedFactor = 0.5f
@@ -208,7 +217,7 @@ private fun DrawScope.renderCurrentFlow(
         }
         StoryPhase.BATTERY_FOCUS -> {
             // Sparky appears at the battery terminal with excited wide eyes
-            val bounceY = topY + sin(progress * 8f) * 6f
+            val bounceY = bY + sin(progress * 8f) * 6f
             CharacterSprite.draw(
                 drawScope = this,
                 position = Offset(bX, bounceY),
@@ -218,11 +227,27 @@ private fun DrawScope.renderCurrentFlow(
             )
         }
         StoryPhase.WIRE_TRANSIT -> {
-            // Sparky runs along the top wire with calm content smile
-            val currentX = bX + (rX - bX) * progress.coerceIn(0f, 1f)
+            // Sparky travels from battery up through left leg and along top wire
+            val sparkyOffset = when {
+                progress < 0.3f -> {
+                    // Up from battery to top wire
+                    val p = progress / 0.3f
+                    Offset(bX, bY - (bY - topY) * p)
+                }
+                progress < 0.8f -> {
+                    // Across top wire
+                    val p = (progress - 0.3f) / 0.5f
+                    Offset(bX + (rX - bX) * p, topY)
+                }
+                else -> {
+                    // Down from top wire into resistor
+                    val p = (progress - 0.8f) / 0.2f
+                    Offset(rX, topY + (rY - topY) * p)
+                }
+            }
             CharacterSprite.draw(
                 drawScope = this,
-                position = Offset(currentX, topY),
+                position = sparkyOffset,
                 motionProgress = progress,
                 expression = SparkyExpression.CALM,
                 speedFactor = 1.5f
@@ -230,7 +255,7 @@ private fun DrawScope.renderCurrentFlow(
         }
         StoryPhase.RESISTOR_FOCUS -> {
             // Sparky inside the resistor, non-uniformly squished by resistance collisions
-            val jitterX = rX + sin(progress * 25f) * 4f
+            val jitterX = rX + sin(progress * 25f) * 3f
             val jitterY = rY + sin(progress * 30f) * 3f
             CharacterSprite.draw(
                 drawScope = this,

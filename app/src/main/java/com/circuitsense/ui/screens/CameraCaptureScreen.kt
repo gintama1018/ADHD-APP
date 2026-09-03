@@ -1,7 +1,6 @@
 package com.circuitsense.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,11 +10,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,16 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,26 +43,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.DeleteSweep
 import com.circuitsense.data.CircuitHistoryManager
 import com.circuitsense.data.SampleCircuits
-import com.circuitsense.data.SavedCircuitItem
 import com.circuitsense.model.CircuitGraph
 import com.circuitsense.recognition.CircuitRecognizer
 import com.circuitsense.recognition.UniversalLiveVisionScanner
 import com.circuitsense.recognition.UniversalVisionBox
-import com.circuitsense.ui.components.LiveCameraBoundingBoxes
 import com.circuitsense.renderer.CharacterSprite
 import com.circuitsense.renderer.SparkyExpression
+import com.circuitsense.ui.components.LiveCameraBoundingBoxes
 import com.circuitsense.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 /**
- * Screen 1 — Capture / Home Screen (Senior Product Standard).
- * Built with proper system insets (statusBarsPadding, navigationBarsPadding),
- * rich hero showcase, vibrant curated preset cards, and on-device ML Kit camera scanner.
+ * Screen 1 — Clean, Live Fullscreen Vision Scanner.
+ * Completely unblocked:
+ * - Real-time bounding boxes with label pills (Photos 1, 2, 3)
+ * - Zero overlapping elements (Single vertical header column with statusBarsPadding)
+ * - No annoying fixed reticle in the middle
+ * - Expandable presets drawer (leaves camera wide open)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,18 +96,19 @@ fun CameraCaptureScreen(
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
+    var showPresetsDrawer by remember { mutableStateOf(false) }
     var liveBoxes by remember { mutableStateOf<List<UniversalVisionBox>>(emptyList()) }
     var liveDetectedText by remember { mutableStateOf("") }
     var isCircuitLocked by remember { mutableStateOf(false) }
+    var activeCategory by remember { mutableStateOf("All Objects") }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
     ) {
-        // Center Area: Live Camera Preview OR Animated Showcase Hero Card
+        // 1. Fullscreen Viewfinder OR Hero Showcase
         if (hasCameraPermission) {
-            // Live Camera Viewfinder
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -160,35 +156,18 @@ fun CameraCaptureScreen(
                 }
             )
 
-            // Live Dynamic Streaming Bounding Boxes Overlay (Matching Photos 1, 2, 3)
+            // Live Dynamic Streaming Bounding Boxes with Labels (Photos 1, 2, 3)
             LiveCameraBoundingBoxes(
                 boxes = liveBoxes,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // Animated Laser Reticle on active camera
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(width = 300.dp, height = 240.dp)
-                    .border(2.5.dp, ElectricBlue.copy(alpha = 0.8f), RoundedCornerShape(24.dp))
-                    .padding(14.dp)
-            ) {
-                Text(
-                    text = "Align Ohm's Law Circuit (V = IR)",
-                    color = TextPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-            }
         } else {
             // High-End Interactive Circuit Showcase Hero (Solves empty black screen)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp)
-                    .padding(top = 110.dp, bottom = 260.dp),
+                    .padding(top = 110.dp, bottom = 180.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -202,7 +181,6 @@ fun CameraCaptureScreen(
                         modifier = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Animated Sparky Mini Circuit Canvas
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -228,8 +206,6 @@ fun CameraCaptureScreen(
                                     color = Color(0xFF475569),
                                     style = Stroke(width = 4f, cap = StrokeCap.Round)
                                 )
-
-                                // Sparky Mascot
                                 CharacterSprite.draw(
                                     drawScope = this,
                                     position = Offset(w * 0.5f, h * 0.15f),
@@ -243,7 +219,7 @@ fun CameraCaptureScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Transform Schematics into Motion",
+                            text = "Universal AI Motion-Graphics Tutor",
                             color = TextPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -251,7 +227,7 @@ fun CameraCaptureScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Point camera at any drawn circuit or launch one of our verified textbook presets below.",
+                            text = "Scan machines, everyday objects, diagrams or questions in real-time.",
                             color = TextMuted,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center,
@@ -270,308 +246,304 @@ fun CameraCaptureScreen(
                         ) {
                             Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Enable Camera Scanner", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Enable Live Camera", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
             }
         }
 
-        // Top Header Bar with Safe Status Bar Insets (Solves notch/clock overlapping)
-        Row(
+        // 2. Clean Unified Top Header Column (ZERO Overlapping, Status Bar Safe)
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-                .align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .align(Alignment.TopCenter)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0x332EC5FF),
-                    border = BorderStroke(1.dp, ElectricBlue),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("⚡", fontSize = 18.sp)
+            // Row 1: Title, Live Status Badge, and History Icon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0x332EC5FF),
+                        border = BorderStroke(1.dp, ElectricBlue),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("⚡", fontSize = 16.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "CircuitSense",
+                            color = ElectricBlue,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Universal AI Vision Tutor",
+                            color = TextMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "CircuitSense",
-                        color = ElectricBlue,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "AI Motion-Graphics Physics Tutor",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Study History Button
+                    IconButton(
+                        onClick = { showHistorySheet = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Study History",
+                            tint = ElectricBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Live Vision FPS Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xCC0F172A),
+                        border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.6f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(SuccessGreen, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LIVE CV",
+                                color = SuccessGreen,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Study History / Gallery Button
-                IconButton(onClick = { showHistorySheet = true }) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = "Study History",
-                        tint = ElectricBlue
-                    )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Row 2: Subject Domain Filter Pills
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val categories = listOf("All Objects", "Physics", "Maths (Soon)", "Chemistry (Soon)")
+                items(categories) { cat ->
+                    val isSelected = cat == activeCategory
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) ElectricBlue else CardDark,
+                        border = BorderStroke(1.dp, if (isSelected) ElectricBlue else CardElevated),
+                        modifier = Modifier.clickable { activeCategory = cat }
+                    ) {
+                        Text(
+                            text = cat,
+                            color = if (isSelected) BackgroundDark else TextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(4.dp))
+            }
+
+            // Row 3: Live Telemetry Banner (Only if objects are tracked)
+            if (liveBoxes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = CardDark,
-                    border = BorderStroke(1.dp, WarmAmber.copy(alpha = 0.6f))
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xCC0D1321),
+                    border = BorderStroke(1.dp, ElectricBlue.copy(alpha = 0.4f))
                 ) {
-                    Text(
-                        text = "V = IR MVP",
-                        color = WarmAmber,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🔴 Tracking ${liveBoxes.size} Entities in 30 FPS",
+                            color = ElectricBlue,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
 
-        // Multi-Subject Study Bar (Physics, Mathematics, Chemistry)
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(top = 64.dp, start = 16.dp, end = 16.dp)
-                .align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = ElectricBlue
-                ) {
-                    Text(
-                        text = "⚡ Physics (Active)",
-                        color = BackgroundDark,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-            item {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = CardDark,
-                    border = BorderStroke(1.dp, CardElevated),
-                    modifier = Modifier.clickable {
-                        Toast.makeText(context, "📐 Mathematics: Geometry & Vector diagrams in Phase 2! Physics active.", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Text(
-                        text = "📐 Maths (Soon)",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-            item {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = CardDark,
-                    border = BorderStroke(1.dp, CardElevated),
-                    modifier = Modifier.clickable {
-                        Toast.makeText(context, "🧪 Chemistry: Molecular bond diagrams in Phase 2! Physics active.", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Text(
-                        text = "🧪 Chemistry (Soon)",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        }
-
-        // Bottom Controls Container with Safe Navigation Bar Insets
+        // 3. Bottom Controls Container (Safe Insets, Expandable Presets Drawer)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, BackgroundDark.copy(alpha = 0.95f), BackgroundDark)
+                        listOf(Color.Transparent, BackgroundDark.copy(alpha = 0.90f), BackgroundDark)
                     )
                 )
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Curated Presets Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Expandable Presets Toggle Button
+            OutlinedButton(
+                onClick = { showPresetsDrawer = !showPresetsDrawer },
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, CardElevated),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = CardDark.copy(alpha = 0.8f)),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Collections,
-                        contentDescription = null,
-                        tint = ElectricBlue,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Curated Textbook Presets",
-                        color = TextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Icon(
+                    imageVector = if (showPresetsDrawer) Icons.Default.KeyboardArrowDown else Icons.Default.Collections,
+                    contentDescription = null,
+                    tint = ElectricBlue,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Instant 60 FPS",
-                    color = SuccessGreen,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = if (showPresetsDrawer) "Hide Presets" else "Curated Textbook Presets (4)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Rich Glassmorphic Preset Cards (4 Presets)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Collapsible Presets Cards
+            AnimatedVisibility(
+                visible = showPresetsDrawer,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
-                items(SampleCircuits.items) { sample ->
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = CardDark,
-                        border = BorderStroke(1.dp, CardElevated),
-                        modifier = Modifier.clickable {
-                            onCircuitReady(sample.graph, false, null)
-                        }
+                Column(modifier = Modifier.padding(top = 10.dp)) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .width(155.dp)
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                text = sample.title,
-                                color = ElectricBlue,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "${sample.graph.formula.V.toInt()}V ÷ ${sample.graph.formula.R.toInt()}Ω",
-                                    color = TextMuted,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
+                        items(SampleCircuits.items) { sample ->
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = BackgroundDark
+                                shape = RoundedCornerShape(16.dp),
+                                color = CardDark,
+                                border = BorderStroke(1.dp, CardElevated),
+                                modifier = Modifier.clickable {
+                                    onCircuitReady(sample.graph, false, null)
+                                }
                             ) {
-                                Text(
-                                    text = "I = ${sample.graph.formula.I} A",
-                                    color = SuccessGreen,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .width(140.dp)
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = sample.title,
+                                        color = ElectricBlue,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${sample.graph.formula.V.toInt()}V ÷ ${sample.graph.formula.R.toInt()}Ω",
+                                        color = TextMuted,
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "I = ${sample.graph.formula.I} A",
+                                        color = SuccessGreen,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Shutter Button Row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                IconButton(
-                    onClick = {
-                        val capture = imageCapture
-                        if (capture != null && !isAnalyzing) {
-                            isAnalyzing = true
-                            val executor = Executors.newSingleThreadExecutor()
-                            capture.takePicture(
-                                executor,
-                                object : ImageCapture.OnImageCapturedCallback() {
-                                    override fun onCaptureSuccess(image: ImageProxy) {
-                                        val bitmap = imageProxyToBitmap(image)
-                                        image.close()
-                                        coroutineScope.launch {
-                                            val result = recognizer.analyzeCircuitImage(bitmap)
-                                            isAnalyzing = false
-                                            onCircuitReady(result.graph, result.isFallbackUsed, result.fallbackReason)
-                                        }
-                                    }
-
-                                    override fun onError(exception: ImageCaptureException) {
+            // Main Shutter Button
+            IconButton(
+                onClick = {
+                    val capture = imageCapture
+                    if (capture != null && !isAnalyzing) {
+                        isAnalyzing = true
+                        val executor = Executors.newSingleThreadExecutor()
+                        capture.takePicture(
+                            executor,
+                            object : ImageCapture.OnImageCapturedCallback() {
+                                override fun onCaptureSuccess(image: ImageProxy) {
+                                    val bitmap = imageProxyToBitmap(image)
+                                    image.close()
+                                    coroutineScope.launch {
+                                        val result = recognizer.analyzeCircuitImage(bitmap)
                                         isAnalyzing = false
-                                        coroutineScope.launch {
-                                            Toast.makeText(context, "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                        }
+                                        onCircuitReady(result.graph, result.isFallbackUsed, result.fallbackReason)
                                     }
                                 }
-                            )
-                        } else {
-                            // If camera not ready, launch permission or fallback to default sample
-                            if (!hasCameraPermission) {
-                                permissionLauncher.launch(Manifest.permission.CAMERA)
-                            } else {
-                                onCircuitReady(
-                                    SampleCircuits.defaultSample.graph,
-                                    true,
-                                    "Showing reference 9V, 100Ω circuit"
-                                )
+
+                                override fun onError(exception: ImageCaptureException) {
+                                    isAnalyzing = false
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
+                        )
+                    } else {
+                        if (!hasCameraPermission) {
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                        } else {
+                            onCircuitReady(
+                                SampleCircuits.defaultSample.graph,
+                                true,
+                                "Showing reference 9V, 100Ω circuit"
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(ElectricBlue, CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Scan Circuit",
-                        tint = BackgroundDark,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
+                    }
+                },
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(ElectricBlue, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Scan",
+                    tint = BackgroundDark,
+                    modifier = Modifier.size(30.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Tap to Scan Diagram with ML Kit OCR",
+                text = "Tap to Analyze Live Vision Frame",
                 color = TextMuted,
                 fontSize = 11.sp
             )
         }
 
-        // Loading overlay during OCR / CV analysis
+        // Loading overlay
         if (isAnalyzing) {
             Box(
                 modifier = Modifier
@@ -583,13 +555,13 @@ fun CameraCaptureScreen(
                     CircularProgressIndicator(color = ElectricBlue)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Analyzing Circuit Diagram...",
+                        text = "Analyzing Live Scene...",
                         color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Parsing components & calculating Ohm's Law JSON",
+                        text = "Converting to Universal Knowledge Graph JSON",
                         color = TextMuted,
                         fontSize = 12.sp
                     )
@@ -598,7 +570,7 @@ fun CameraCaptureScreen(
         }
     }
 
-    // Study History / Saved Simulations Sheet (per user request)
+    // Study History Sheet
     if (showHistorySheet) {
         val historyList = remember { CircuitHistoryManager.getHistory(context) }
         ModalBottomSheet(
@@ -644,7 +616,7 @@ fun CameraCaptureScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No saved circuits yet.\nSave any scanned circuit from the Overview screen to review it here!",
+                            text = "No saved simulations yet.\nSave any scanned diagram from the Overview screen to review it here!",
                             color = TextMuted,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center,
@@ -666,7 +638,7 @@ fun CameraCaptureScreen(
                                             val graph = CircuitGraph.fromJson(item.graphJson)
                                             onCircuitReady(graph, false, null)
                                         } catch (e: Exception) {
-                                            Toast.makeText(context, "Failed to load saved circuit", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Failed to load saved simulation", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                             ) {
